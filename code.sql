@@ -1,1 +1,76 @@
+-- 1. Выбрать все предметы одежды, которые невозможно применить к персонажам до 15 уровня.
+SELECT *
+FROM "Items" i
+JOIN "Item_Usage" u ON i.item_cod = u.item_id
+WHERE i.item_type ILIKE '%одеж%'
+  AND u.min_character_level >= 15;
+
+
+-- 2. Выбрать все щиты, относящиеся к редким предметам, которые можно обменять или продать.
+SELECT *
+FROM "Items"
+WHERE name ILIKE '%щит%'
+  AND rarity ILIKE '%редк%'
+  AND (is_exchangeable = TRUE OR is_sellable = TRUE);
+
+
+-- 3. Создать таблицу, содержащую данные 1 запроса с указанием минимальных уровней персонажей и пользователей для их применения.
+DROP TABLE IF EXISTS variant39;
+
+CREATE TABLE variant39 AS
+SELECT i.item_cod, i.name, i.price, i.description,
+       u.character_id, u.min_user_level, u.min_character_level
+FROM "Items" i
+JOIN "Item_Usage" u ON i.item_cod = u.item_id
+WHERE i.item_type ILIKE '%одеж%'
+  AND u.min_character_level >= 15;
+
+
+-- 4. Добавить в созданную таблицу предметы, для которых минимальный уровень пользователя и персонажа для их применения совпадают.
+INSERT INTO variant39
+SELECT i.item_cod, i.name, i.price, i.description,
+       u.character_id, u.min_user_level, u.min_character_level
+FROM "Items" i
+JOIN "Item_Usage" u ON i.item_cod = u.item_id
+WHERE u.min_user_level = u.min_character_level
+  AND NOT EXISTS (
+      SELECT 1
+      FROM variant39 v
+      WHERE v.item_cod = i.item_cod
+        AND v.character_id = u.character_id
+  );
+
+
+-- 5. В созданной таблице уменьшить на 10% стоимость всех предметов, в характеристиках которых отсутствует упоминание об одноразовом применении.
+UPDATE variant39
+SET price = price * 0.9
+WHERE COALESCE(description, '') NOT ILIKE '%одноразов%';
+
+-- COALESCE — встроенная функция, заменяет NULL на пустую строку.
+
+
+-- 6. Удалить из созданной таблицы все предметы, которые не применяются ни к одному из персонажей.
+DELETE FROM variant39 v
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM "Item_Usage" u
+    WHERE u.item_id = v.item_cod
+      AND u.is_usable = TRUE
+);
+
+
+-- 7. Посчитать суммарную стоимость предметов с возможностью продажи, которые можно применить к каждому из персонажей.
+SELECT u.character_id,
+       SUM(i.price) AS total_price
+FROM "Items" i
+JOIN "Item_Usage" u ON i.item_cod = u.item_id
+WHERE i.is_sellable = TRUE
+  AND u.is_usable = TRUE
+GROUP BY u.character_id;
+
+-- SUM — агрегатная функция, считает общую стоимость предметов.
+
+
+-- Проверка созданной таблицы
+SELECT * FROM variant39;
 
