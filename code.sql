@@ -69,16 +69,27 @@ WHERE NOT EXISTS (
 );
 
 
--- 7. Посчитать суммарную стоимость предметов с возможностью продажи, которые можно применить к каждому из персонажей.
+-- 7. Посчитать суммарную стоимость предметов с возможностью продажи,которые можно применить к каждому из персонажей.
+
+-- 1. Сначала находим подходящие предметы
+WITH suitable_items AS (
+    SELECT
+        u.character_id,
+        i.item_cod,
+        i.price
+    FROM "Item_Usage" u
+    JOIN "Items" i ON u.item_id = i.item_cod
+    WHERE u.is_usable = TRUE
+      AND i.is_sellable = TRUE
+)
+
+-- 2. Затем считаем стоимость для каждого персонажа
 SELECT
-    u.character_id,
-    COALESCE(SUM(i.price), 0) AS total_price
-FROM "Item_Usage" u
-JOIN "Items" i ON u.item_id = i.item_cod
-WHERE u.is_usable = TRUE
-  AND i.is_sellable = TRUE
-GROUP BY u.character_id
-ORDER BY u.character_id;
+    character_id,
+    SUM(price) AS total_price
+FROM suitable_items
+GROUP BY character_id
+ORDER BY character_id;
 -- SUM — агрегатная функция, считает общую стоимость предметов.
 
 -- Проверка созданной таблицы
