@@ -2,14 +2,7 @@
 SELECT i.*
 FROM "Items" i
 WHERE i.item_type ILIKE '%одеж%'
-  AND EXISTS (
-      SELECT 1
-      FROM "Item_Usage" u
-      WHERE u.item_id = i.item_cod
-        AND u.is_usable = TRUE
-        AND u.min_character_level > 15
-  )
-  AND NOT EXISTS (
+   AND NOT EXISTS (
       SELECT 1
       FROM "Item_Usage" u
       WHERE u.item_id = i.item_cod
@@ -36,7 +29,6 @@ FROM "Items" i
 JOIN "Item_Usage" u ON i.item_cod = u.item_id
 WHERE i.item_type ILIKE '%одеж%'
   AND u.is_usable = TRUE
-  AND u.min_character_level > 15
   AND NOT EXISTS (
       SELECT 1
       FROM "Item_Usage" u2
@@ -78,21 +70,16 @@ WHERE NOT EXISTS (
 
 
 -- 7. Посчитать суммарную стоимость предметов с возможностью продажи, которые можно применить к каждому из персонажей.
-SELECT c.character_id,
-       COALESCE(SUM(i.price), 0) AS total_price
-FROM (
-    SELECT DISTINCT character_id
-    FROM "Item_Usage"
-) c
-LEFT JOIN "Item_Usage" u
-    ON c.character_id = u.character_id
-   AND u.is_usable = TRUE
-LEFT JOIN "Items" i
-    ON u.item_id = i.item_cod
-   AND i.is_sellable = TRUE
-GROUP BY c.character_id
-ORDER BY c.character_id;
-
+SELECT
+    u.character_id,
+    COALESCE(SUM(i.price), 0) AS total_price
+FROM "Item_Usage" u
+JOIN "Items" i ON u.item_id = i.item_cod
+WHERE u.is_usable = TRUE
+  AND i.is_sellable = TRUE
+GROUP BY u.character_id
+ORDER BY u.character_id;
+-- SUM — агрегатная функция, считает общую стоимость предметов.
 
 -- Проверка созданной таблицы
 SELECT * FROM variant39;
